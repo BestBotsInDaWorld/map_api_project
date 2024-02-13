@@ -87,17 +87,21 @@ coord_text = f"Расстояние по долготе: {info['delta_x']}\n" \
              f"Расстояние по широте: {info['delta_y']}\n" \
              f"Часы работы: {info['working_time']}"
 
-size = width, height = 300, 300
+size = width, height = 800, 800
 screen = pygame.display.set_mode(size)
 image = pygame.image.load(BytesIO(response.content)).convert()
 
 pygame.init()
 if __name__ == '__main__':
     running = True
-    fps = 1
+    fps = 60
     clock = pygame.time.Clock()
-    screen.fill('white')
-    screen.blit(image, (0, 0))
-    clock.tick(fps)
-    pygame.display.flip()
+    while running:
+        screen.fill('white')
+        screen.blit(image, (0, 0))
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+        clock.tick(fps)
+        pygame.display.flip()
     pygame.quit()
