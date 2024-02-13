@@ -7,6 +7,12 @@ import requests
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
+
+
+
+
+
+
 toponym_to_find = " ".join(sys.argv[1:])
 
 geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
@@ -29,6 +35,7 @@ toponym = json_response["response"]["GeoObjectCollection"][
 
 # Координаты центра топонима:
 toponym_coodrinates = toponym["Point"]["pos"]
+print(toponym_coodrinates)
 search_api_server = "https://search-maps.yandex.ru/v1/"
 api_key = "dda3ddba-c9ea-4ead-9010-f43fbc15c6e3"
 address_ll = ",".join(toponym_coodrinates.split())
@@ -59,7 +66,7 @@ org_address = organization["properties"]["CompanyMetaData"]["address"]
 # Получаем координаты ответа.
 point = organization["geometry"]["coordinates"]
 org_point = "{0},{1}".format(point[0], point[1])
-delta = "0.05"
+delta = 0.05
 
 # Собираем параметры для запроса к StaticMapsAPI:
 map_params = {
@@ -87,17 +94,83 @@ coord_text = f"Расстояние по долготе: {info['delta_x']}\n" \
              f"Расстояние по широте: {info['delta_y']}\n" \
              f"Часы работы: {info['working_time']}"
 
-size = width, height = 300, 300
+size = width, height = 800, 800
 screen = pygame.display.set_mode(size)
 image = pygame.image.load(BytesIO(response.content)).convert()
 
+
+class Camera:
+    def __init__(self):
+        self.scale = 0.05
+        self.x = 0
+        self.y = 0
+
+    def get_coords(self):
+        return (self.scale(), self.x, self.y)
+
+    def set_size(self, scale):
+        global delta
+        self.scale += scale
+        delta = self.scale
+        print(self.scale, delta)
+
+    def move(self, x, y):
+        global toponym_coodrinates
+        self.x += x
+        self.y += y
+        toponym_coodrinates = (f"{float(toponym_coodrinates.split()[0]) + self.x} "
+                               f"{float(toponym_coodrinates.split()[1]) + self.y}")
+        address_ll = ",".join(toponym_coodrinates.split())
+
+    def render(self):
+        global toponym_coodrinates, delta, image
+
+        search_params = {
+            "ll": address_ll,
+            "span": delta,
+            "format": "json",
+            'l': 'sat'
+        }
+        response = requests.get(map_api_server, params=search_params)
+        print(response.content)
+        image = pygame.image.load(BytesIO(response.content)).convert()
+
+
 pygame.init()
 if __name__ == '__main__':
+    scale = 0.005
+    map = Camera()
+    x, y = 0, 0
     running = True
-    fps = 1
+    fps = 60
     clock = pygame.time.Clock()
-    screen.fill('white')
-    screen.blit(image, (0, 0))
-    clock.tick(fps)
-    pygame.display.flip()
+    while running:
+        screen.fill('white')
+        screen.blit(image, (0, 0))
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_w:
+                map.set_size(-scale)
+                print("down")
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_s:
+                map.set_size(scale)
+                print('up')
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
+                map.move(5, y)
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
+                map.move(x, -5)
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
+                map.move(-5, y)
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
+                map.move(x, 5)
+            if event.type == pygame.KEYDOWN and event.type == pygame.QUIT:
+                running = False
+        map.render()
+        clock.tick(fps)
+        pygame.display.flip()
     pygame.quit()
+
+
+
+
+
+
