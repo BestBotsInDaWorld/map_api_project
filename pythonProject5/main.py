@@ -1,12 +1,11 @@
 import sys
 from io import BytesIO
 from math import cos
+from get_place import get_place
 # Этот класс поможет нам сделать картинку из потока байт
 import pygame
+import pygame_gui
 import requests
-from PIL import Image
-from PIL import ImageDraw
-from PIL import ImageFont
 toponym_to_find = " ".join(sys.argv[1:])
 
 geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
@@ -78,7 +77,19 @@ def get_info(organization, point_initial, point_address):
             "working_time": organization["properties"]["CompanyMetaData"]["Hours"]["text"]}
 
 
+def make_fields():
+    labels = [pygame_gui.elements.UILabel(pygame.Rect(-50, 500 + i * 40, 200, 30), text=value, manager=manager)
+              for i, value in zip(range(4), ["longitude", "latitude", "span1", "span2"])]
+    values = [pygame_gui.elements.UITextEntryLine(pygame.Rect(100, 500 + i * 40, 200, 30), manager=manager)
+              for i in range(4)]
+    input_fields = {key: value for key in ["longitude", "latitude", "span1", "span2"]
+                    for value in values}
+    return input_fields
+
+
 map_api_server = "http://static-maps.yandex.ru/1.x/"
+
+
 # ... и выполняем запрос
 response = requests.get(map_api_server, params=map_params)
 
@@ -87,21 +98,32 @@ coord_text = f"Расстояние по долготе: {info['delta_x']}\n" \
              f"Расстояние по широте: {info['delta_y']}\n" \
              f"Часы работы: {info['working_time']}"
 
-size = width, height = 800, 800
+pygame.init()
+size = width, height = 600, 800
 screen = pygame.display.set_mode(size)
 image = pygame.image.load(BytesIO(response.content)).convert()
-
-pygame.init()
+manager = pygame_gui.UIManager((600, 800), 'button.json')
 if __name__ == '__main__':
     running = True
     fps = 60
     clock = pygame.time.Clock()
+    input_fields = make_fields()
+    search_button = pygame_gui.elements.UIButton(pygame.Rect(100, 700, 200, 50), text="Search", manager=manager)
     while running:
         screen.fill('white')
         screen.blit(image, (0, 0))
         for event in pygame.event.get():
+            manager.process_events(event)
             if event.type == pygame.QUIT:
                 running = False
+            if event.type == pygame_gui.UI_BUTTON_PRESSED:
+                if event.ui_element == search_button:
+                    result = get_place(input_fields)
+                    if result:
+                        image = result
+        manager.draw_ui(screen)
+        manager.update(1 / fps)
         clock.tick(fps)
         pygame.display.flip()
+
     pygame.quit()
