@@ -19,5 +19,4 @@ def get_place(input_fields):
     }
 
     response = requests.get(map_api_server, params=geocoder_params)
-    print(response.content)
     return pygame.image.load(BytesIO(response.content)).convert()
