@@ -5,6 +5,39 @@ import pygame_gui
 import requests
 
 
+def search(geocode):
+    # эта фунукция берет запроса геокодера и переформатирует его
+    # в запрос static api и возвращает его
+    api_server = "https://geocode-maps.yandex.ru/1.x/"
+
+    apikey = "40d1649f-0493-4b70-98ba-98533de7710b"
+    geocode = '+'.join(input_box.get_text().split())
+    format = 'json'
+
+    params = {
+        "apikey": apikey,
+        "geocode": geocode,
+        "format": format
+    }
+    response = requests.get(api_server, params=params)
+    if not response:
+        print("Ошибка выполнения запроса:")
+        print("Http статус:", response.status_code, "(", response.reason, ")")
+    json_response = response.json()
+    static_server = 'http://static-maps.yandex.ru/1.x/'
+    lon = json_response['response']['GeoObjectCollection']['featureMember'][0]['GeoObject']['Point']['pos'].split()[0]
+    lat = json_response['response']['GeoObjectCollection']['featureMember'][0]['GeoObject']['Point']['pos'].split()[1]
+    spn = '0.02'
+    map = 'map'
+    params = {
+        'll': ','.join([lon, lat]),
+        'spn': ','.join([spn, spn]),
+        'l': map,
+        'pt': ','.join([lon, lat, 'pm2rdl'])
+    }
+    return requests.get(static_server, params=params)
+
+
 if __name__ == "__main__":
     pygame.init()
     size = width, height = 600, 450
@@ -47,7 +80,8 @@ if __name__ == "__main__":
                     params = {
                         'll': ','.join([lon, lat]),
                         'spn': ','.join([spn, spn]),
-                        'l': map
+                        'l': map,
+                        'pt': ','.join([lon, lat, 'pm2rdl'])
                     }
                     response_map = requests.get(static_server, params=params)
                     if response_map:
@@ -63,4 +97,3 @@ if __name__ == "__main__":
         manager.update(1 / 60)
         pygame.display.flip()
     pygame.quit()
-
